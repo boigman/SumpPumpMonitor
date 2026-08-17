@@ -47,6 +47,13 @@ struct event_rec
 
 event_rec events[EVENT_LIMIT];
 
+// Add these to your global variables section
+unsigned long lastWiFiCheck = 0;
+const unsigned long wifiCheckInterval = 10000; // Check status every 10 seconds
+bool wasConnected = false;
+
+
+
 void getLocalTime(boolean doPrint)
 {
   struct tm timeinfo;
@@ -302,7 +309,7 @@ void sendEmail(String pHeader, String pMessage){
     Serial.println("Error sending Email, " + smtp.errorReason());
 }
 
-void initWiFi() {
+/* void initWiFi() {
 #ifdef IP_ADDRESS 
   Serial.print("Found fixed IP Address: ");
   Serial.println(ip_address);
@@ -324,7 +331,8 @@ void initWiFi() {
     delay(1000);
   }
   Serial.println(WiFi.localIP());
-}
+} //initWiFi
+ */
 
 void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info){
   Serial.println("Connected to AP successfully!");
@@ -342,12 +350,45 @@ void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
   Serial.println(info.disconnected.reason);
   Serial.println("Trying to Reconnect");
 //  WiFi.begin(ssid, password);
-  initWiFi();  
+//  initWiFi();  
 }
 
-
+//  Reconnection Helper Routine
+void maintainWiFi() {
+  unsigned long currentMillis = millis();
+  
+  // Non-blocking timer check
+  if (currentMillis - lastWiFiCheck >= wifiCheckInterval) {
+    lastWiFiCheck = currentMillis;
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      if (!wasConnected) {
+        Serial.println("\nWiFi Reconnected Successfully!");
+        getLocalTime(true);
+        Serial.print(" IP Position: ");
+        Serial.println(WiFi.localIP());
+        
+        // Restart the web server to bind to the new connection layer
+        server.begin(); 
+        wasConnected = true;
+      }
+    } else {
+      Serial.println("\n[WARNING] WiFi Connection Lost. Attempting recovery...");
+      wasConnected = false;
+      
+      // Forcefully re-apply your specific static IP profile
+      #ifdef IP_ADDRESS
+        WiFi.config(ip_address, gateway, subnet, primaryDNS, secondaryDNS);
+      #endif
+      
+      // Re-trigger background association
+      WiFi.begin(ssid, password);
+    }
+  }
+}
 
 void setup() {
+    Serial.begin(115200);
     pinMode (15, OUTPUT);
     pinMode (2, OUTPUT);
     pinMode (0, OUTPUT);
@@ -376,10 +417,37 @@ void setup() {
     //digitalWrite(red_led[0], HIGH);
     //delay(2500);
     //digitalWrite(red_led[0], LOW);
-    Serial.begin(115200);
+
+    // Configure WiFi Profile
+  #ifdef IP_ADDRESS
+    if (!WiFi.config(ip_address, gateway, subnet, primaryDNS, secondaryDNS)) {
+      Serial.println("STA Failed to configure Static IP");
+    }
+  #endif
+
+  WiFi.setAutoReconnect(true); // Tell ESP32 to automatically reconnect
+  WiFi.begin(ssid, password);
   
+  Serial.print("Connecting to Wi-Fi");
+  unsigned long startAttempt = millis();
+  
+  // Limit blocking connection setup to 15 seconds max to prevent boot-loop locking
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 15000) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  if(WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nConnected!");
+    wasConnected = true;
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  } else {
+    Serial.println("\nInitial connection failed. Booting into loop recovery mode.");
+    wasConnected = false;
+  }
+
   //connect to WiFi
-  initWiFi();
+//  initWiFi();
   Serial.println(" CONNECTED");
   Serial.print("Got IP: ");  Serial.println(WiFi.localIP());
 
@@ -500,6 +568,16 @@ void setup() {
 }
 
 void loop() {
+  // Always run network health checks first
+  maintainWiFi();
+
+  // Only handle server clients if the connection is active
+  if (WiFi.status() == WL_CONNECTED) {
+    server.handleClient();
+  }
+
+  // ... Rest of your existing pump monitor and timing logic ...
+
     for(int i = 0;i<4;i++) {
         switch_val = digitalRead(switches[i]);
         if(!switch_val) {
