@@ -6,6 +6,7 @@
 #include "config.h"
 
 #define DEBUG
+//#define MAILON
 const char* ssid       = WIFI_SSID;
 const char* password   = WIFI_PASSWORD;
 #ifdef IP_ADDRESS
@@ -54,6 +55,7 @@ bool wasConnected = false;
 
 
 
+/*
 void getLocalTime(boolean doPrint)
 {
   struct tm timeinfo;
@@ -68,6 +70,7 @@ void getLocalTime(boolean doPrint)
     Serial.print(timeStringBuff);
   }
 }
+*/
 
 String SendHTML(int pCurrPumpState,int pCurrLevel){
   String ptr = "<!DOCTYPE html> <html>\n";
@@ -200,13 +203,29 @@ int getWaterLevel(boolean doPrint) {
   for(int i = 3;i>-1;i--) {
     switch_val = digitalRead(switches[i]);
     if(!switch_val) {
-      if(doPrint) {
-        Serial.print("Water level is: ");
-        Serial.print(levels[i+1]);
+      if(last_switch_val[i]!=switch_val) {
+        if(doPrint) {
+          Serial.print("Water level is: ");
+          Serial.println(levels[i+1]);
+        }
+        for(int j=i;j>-1;j--) {
+          digitalWrite(green_led[j], LOW);
+          delay(20);
+          digitalWrite(red_led[j], HIGH);
+        }
       }
+      last_switch_val[i]=switch_val;
       return i+1;
+    } else {
+      if(last_switch_val[i]!=switch_val) {
+        for(int j=i;j<4;j++) {
+          digitalWrite(red_led[i], LOW);
+          delay(20);
+          digitalWrite(green_led[i], HIGH);
+        }
+      }
     }
-
+    last_switch_val[i]=switch_val;
   }
   if(doPrint) {
     Serial.print("Water level is: ");
@@ -216,14 +235,71 @@ int getWaterLevel(boolean doPrint) {
 }
 
 void printHistory() {
+  // Safe circular buffer logic
+  int start = event_count;
+  int count = 0;
+  for(int ii = start; ii >= 0 && count < EVENT_LIMIT; ii--) {
+    int idx = ii % EVENT_LIMIT;
+    Serial.println((String) events[idx].timeStringBuff + ": " + events[idx].description);
+    count++;
+  }
+}
+
+/*
+void printHistory() {
   for(int ii=event_count; ii > max(event_count - EVENT_LIMIT, -1);ii--) {
     array_count = ii % EVENT_LIMIT;
     Serial.println((String) events[array_count].timeStringBuff + ": " + events[array_count].description);
   }
 }
+*/
 
 void sendEmail(String pHeader, String pMessage);
 
+void updateAndGetTime(boolean doPrint)
+{
+  struct tm timeinfo;
+  // Calls the built-in ESP32 time library function safely
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  
+  strftime(timeStringBuff, sizeof(timeStringBuff), "%x %H:%M:%S", &timeinfo);
+  
+  if(doPrint) {
+    Serial.print(timeStringBuff);
+  }
+}
+
+void addEvent(int pEventType) {
+  event_count++;
+  array_count = event_count % EVENT_LIMIT;
+  events[array_count].event_type = pEventType;
+
+  updateAndGetTime(false);
+  strncpy(events[array_count].timeStringBuff, timeStringBuff, sizeof(events[array_count].timeStringBuff) - 1);
+  events[array_count].timeStringBuff[sizeof(events[array_count].timeStringBuff) - 1] = '\0';
+  events[array_count].post_event_level = curr_level;
+
+  String description = "";
+  if(pEventType) { 
+      events[array_count].pre_event_level = pump_prev_level;
+      description = "Pump ran: " + String((millis() - pumpStartMillis)/1000) + "s (Lvl " + levels[events[array_count].pre_event_level] + " to " + levels[events[array_count].post_event_level] + ")";
+  } else { 
+      events[array_count].pre_event_level = prev_level;
+      description = "Lvl changed: " + levels[events[array_count].post_event_level] + " (from " + levels[events[array_count].pre_event_level] + ")";
+  }
+  
+  strncpy(events[array_count].description, description.c_str(), sizeof(events[array_count].description) - 1);
+  events[array_count].description[sizeof(events[array_count].description) - 1] = '\0';
+  
+  Serial.println(String(events[array_count].timeStringBuff) + ": " + events[array_count].description);
+  sendEmail(pEventType ? "Pump Event" : "Water Level Event", description);
+}
+
+
+/*
 void addEvent(int pEventType) {
   event_count++;
   array_count = event_count % EVENT_LIMIT;
@@ -233,7 +309,9 @@ void addEvent(int pEventType) {
 //  Serial.println(array_count);
   events[array_count].event_type = pEventType;
 
-  getLocalTime(false);
+
+
+  updateAndGetTime(false);
   for(int ii=0;ii<sizeof(timeStringBuff);ii++) {
 	events[array_count].timeStringBuff[ii] = timeStringBuff[ii];
   }
@@ -256,6 +334,7 @@ void addEvent(int pEventType) {
   }
   server.send(200, "text/html", SendHTML(currPumpState,curr_level)); 
 }
+*/
 
 void handle_OnConnect() {
 
@@ -273,7 +352,7 @@ void sendEmail(String pHeader, String pMessage){
 
   /* Declare the message class */
   SMTP_Message message;
-
+#ifdef MAILON
   /* Set the message headers */
   message.sender.name = "SumpPump Monitor";
   message.sender.email = AUTHOR_EMAIL;
@@ -307,6 +386,7 @@ void sendEmail(String pHeader, String pMessage){
   /* Start sending Email and close the session */
   if (!MailClient.sendMail(&smtp, &message))
     Serial.println("Error sending Email, " + smtp.errorReason());
+#endif    
 }
 
 /* void initWiFi() {
@@ -322,7 +402,7 @@ void sendEmail(String pHeader, String pMessage){
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi ..");
-  unsigned long connMillis = millis();
+  unsigned long connMillis = millis();ncon
   while (WiFi.status() != WL_CONNECTED) {
     if(millis() - connMillis > 120000) {
       ESP.restart();
@@ -364,7 +444,7 @@ void maintainWiFi() {
     if (WiFi.status() == WL_CONNECTED) {
       if (!wasConnected) {
         Serial.println("\nWiFi Reconnected Successfully!");
-        getLocalTime(true);
+        updateAndGetTime(true);
         Serial.print(" IP Position: ");
         Serial.println(WiFi.localIP());
         
@@ -387,6 +467,7 @@ void maintainWiFi() {
   }
 }
 
+//------------------------------- setup -------------------------------
 void setup() {
     Serial.begin(115200);
     pinMode (15, OUTPUT);
@@ -418,6 +499,7 @@ void setup() {
     //delay(2500);
     //digitalWrite(red_led[0], LOW);
 
+//    WiFi.onEvent(WiFiEvent);  
     // Configure WiFi Profile
   #ifdef IP_ADDRESS
     if (!WiFi.config(ip_address, gateway, subnet, primaryDNS, secondaryDNS)) {
@@ -428,11 +510,9 @@ void setup() {
   WiFi.setAutoReconnect(true); // Tell ESP32 to automatically reconnect
   WiFi.begin(ssid, password);
   
-  Serial.print("Connecting to Wi-Fi");
+  Serial.print("Initializing WiFi Context");
   unsigned long startAttempt = millis();
-  
-  // Limit blocking connection setup to 15 seconds max to prevent boot-loop locking
-  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 15000) {
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 10000) {
     delay(500);
     Serial.print(".");
   }
@@ -466,16 +546,19 @@ void setup() {
   smtp.callback(smtpCallback);
 
 
-  /* Set the session config */
+  // Setup SMTP configuration safely
+  smtp.debug(1);
+  smtp.callback(smtpCallback);
+//  Session_Config config; // Native structure variant for standard mail libraries
   session.server.host_name = SMTP_HOST;
   session.server.port = SMTP_PORT;
   session.login.email = AUTHOR_EMAIL;
   session.login.password = AUTHOR_PASSWORD;
-  session.login.user_domain = "";
+
 
   //init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  getLocalTime(true);
+  updateAndGetTime(true);
   Serial.print("\n");
 
   //disconnect WiFi as it's no longer needed
@@ -489,8 +572,7 @@ void setup() {
 //        Serial.print(i);
 //        Serial.print("] is ");
 //        Serial.println(switch_val?"HIGH":"LOW");
-        last_switch_val[i] = switch_val;
-
+        last_switch_val[i] = -1;
     }
 
 /**/
@@ -519,7 +601,7 @@ void setup() {
 
     for(int i = 0;i<4;i++) {
         digitalWrite(red_led[i], LOW);
-        digitalWrite(green_led[i], LOW);
+        digitalWrite(green_led[i], HIGH);
     }
     digitalWrite(HB_led, LOW);
 
@@ -541,10 +623,12 @@ void setup() {
 		digitalWrite(HB_led, LOW);
 	}
 
-  getLocalTime(false);
-  curr_level = getWaterLevel(false);
-  prev_level = curr_level;
-  events[0].event_type = 0;
+  updateAndGetTime(false);
+  curr_level = getWaterLevel(true);
+  prev_level = -1;
+//  events[0].event_type = 0;
+  addEvent(0); // Safely sets up index 0 with clean configuration constraints
+
   for(int ii=0;ii<sizeof(timeStringBuff);ii++) {
     events[0].timeStringBuff[ii] = timeStringBuff[ii];
   }
@@ -567,6 +651,7 @@ void setup() {
   Serial.println("HTTP server started"); 
 }
 
+//--------------------------------- loop ------------------------------------
 void loop() {
   // Always run network health checks first
   maintainWiFi();
@@ -577,36 +662,21 @@ void loop() {
   }
 
   // ... Rest of your existing pump monitor and timing logic ...
-
-    for(int i = 0;i<4;i++) {
-        switch_val = digitalRead(switches[i]);
-        if(!switch_val) {
-          digitalWrite(green_led[i], LOW);
-          delay(20);
-          digitalWrite(red_led[i], HIGH);
-        } else {
-          digitalWrite(red_led[i], LOW);
-          delay(20);
-          digitalWrite(green_led[i], HIGH);
-        }
-        if(switch_val!=last_switch_val[i]) {
-            getLocalTime(false);
-            prev_level = curr_level;
-            curr_level = getWaterLevel(false);
+  curr_level = getWaterLevel(true);
+  if(prev_level!=curr_level) {
+            updateAndGetTime(false);
             if(!currPumpState) {
-			  addEvent(0);
+			        addEvent(0);
             }
-        }
-        last_switch_val[i] = switch_val;
-
-    }
- curMonVal = analogRead(curMonPin);
+            prev_level = curr_level;
+  }
+  curMonVal = analogRead(curMonPin);
  if(curMonVal > pumpOnLevel) currPumpState = 1;
  if(curMonVal < pumpOffLevel) currPumpState = 0;
 // currPumpState = (curMonVal > pumpOnLevel?1:0);
  if(currPumpState != prevPumpState) {
      prevPumpState = currPumpState;
-     getLocalTime(true);
+     updateAndGetTime(true);
 #ifdef DEBUG		 
     Serial.print(": Sump Pump is ");
     Serial.print(currPumpState?"ON":"OFF");
@@ -621,7 +691,7 @@ void loop() {
       nextPumpCheck = getNextPumpCheck(pumpStartMillis, pumpStartMillis);
     } else {
       digitalWrite(HB_led, LOW);
-      curr_level = getWaterLevel(false);
+//      curr_level = getWaterLevel(true);
       currMillis = millis();
       if(currMillis - pumpStartMillis > 2000) {
 	      addEvent(1);
@@ -630,7 +700,7 @@ void loop() {
  } else {
 	currMillis = millis();
 	if(currPumpState && currMillis > nextPumpCheck) { 
-      getLocalTime(true);
+      updateAndGetTime(true);
       String pumpMsg = ": *** WARNING *** Sump Pump has been running for " + convertMillis(currMillis - pumpStartMillis) + " minutes.";
 //      String description = "Sump Pump ran for " + convertMillis(currMillis - pumpStartMillis) + 
 //		" (Water Level " + levels[events[array_count].pre_event_level] + 
@@ -646,7 +716,7 @@ void loop() {
   }
   if(currMillis >  nextPrintMillis) {
 #ifdef DEBUG
-    getLocalTime(true);		 
+    updateAndGetTime(true);		 
 //    Serial.println(": Printing History...");
 //    printHistory();
 #endif	
@@ -654,7 +724,6 @@ void loop() {
   }
  }
  server.handleClient();
-
 }
 
 /* Callback function to get the Email sending status */
