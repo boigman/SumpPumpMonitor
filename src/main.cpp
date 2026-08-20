@@ -6,12 +6,11 @@
 #include "config.h"
 
 #define DEBUG
-//#define MAILON
 const char* ssid       = WIFI_SSID;
 const char* password   = WIFI_PASSWORD;
 #ifdef IP_ADDRESS
 //  const char* ip_address = IP_ADDRESS;
-  IPAddress ip_address(IP_ADDRESS);
+IPAddress ip_address(IP_ADDRESS);
 #endif
 
 IPAddress gateway(192, 168, 1, 1);
@@ -39,11 +38,11 @@ String levels[20] = {"LOW","ELEVATED","HIGH","CRITICAL","EMERGENCY"};
 
 struct event_rec
 {
-  int event_type; //0=Water_level, 1=Pump_status
-  char timeStringBuff[72];
-  char description[100];
-  int pre_event_level;
-  int post_event_level;
+int event_type; //0=Water_level, 1=Pump_status
+char timeStringBuff[72];
+char description[100];
+int pre_event_level;
+int post_event_level;
 };
 
 event_rec events[EVENT_LIMIT];
@@ -55,97 +54,95 @@ bool wasConnected = false;
 
 
 
-/*
 void getLocalTime(boolean doPrint)
 {
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return;
-  }
-//  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-  strftime(timeStringBuff, sizeof(timeStringBuff), "%x %H:%M:%S", &timeinfo);
-  //print like "const char*"
-  if(doPrint) {
-    Serial.print(timeStringBuff);
-  }
+struct tm timeinfo;
+if(!getLocalTime(&timeinfo)){
+Serial.println("Failed to obtain time");
+return;
 }
-*/
+//  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+strftime(timeStringBuff, sizeof(timeStringBuff), "%x %H:%M:%S", &timeinfo);
+//print like "const char*"
+if(doPrint) {
+Serial.print(timeStringBuff);
+}
+}
 
 String SendHTML(int pCurrPumpState,int pCurrLevel){
-  String ptr = "<!DOCTYPE html> <html>\n";
-  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
-  ptr +="<title>Sump Pump Monitor</title>\n";
-  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
-  ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
-  ptr +=".button {display: block;width: 80px;background-color: #3498db;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
-  ptr +=".button-on {background-color: #3498db;}\n";
-  ptr +=".button-on:active {background-color: #2980b9;}\n";
-  ptr +=".button-off {background-color: #34495e;}\n";
-  ptr +=".button-off:active {background-color: #2c3e50;}\n";
-  ptr +=".center {\n";
-  ptr +="margin-left: auto;\n";
-  ptr +="margin-right: auto;\n";
-  ptr +="}\n";
-  ptr +="p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
-  ptr +="</style>\n";
-  ptr +="</head>\n";
-  ptr +="<body>\n";
-  ptr +="<h1>Sump Pump Monitor</h1>\n";
-    ptr +="<h3>Using Station(STA) Mode</h3>\n";
-  
-  if(pCurrPumpState)
-    {ptr +="<p>Sump Pump is: ON</p>\n";}
-  else
-    {ptr +="<p>Sump Pump is: OFF</p>\n";}
-  ptr +="<p>Water Level is: " + levels[pCurrLevel] + "</p>\n";
+String ptr = "<!DOCTYPE html> <html>\n";
+ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
+ptr +="<title>Sump Pump Monitor</title>\n";
+ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
+ptr +=".button {display: block;width: 80px;background-color: #3498db;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
+ptr +=".button-on {background-color: #3498db;}\n";
+ptr +=".button-on:active {background-color: #2980b9;}\n";
+ptr +=".button-off {background-color: #34495e;}\n";
+ptr +=".button-off:active {background-color: #2c3e50;}\n";
+ptr +=".center {\n";
+ptr +="margin-left: auto;\n";
+ptr +="margin-right: auto;\n";
+ptr +="}\n";
+ptr +="p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
+ptr +="</style>\n";
+ptr +="</head>\n";
+ptr +="<body>\n";
+ptr +="<h1>Sump Pump Monitor</h1>\n";
+ptr +="<h3>Using Station(STA) Mode</h3>\n";
 
-  ptr +="<p><table class='center'><tr><th>Date/Time</th><th>Event</th></tr>";
-  for(int ii=event_count; ii > max(event_count - EVENT_LIMIT, -1);ii--) {
-    array_count = ii % EVENT_LIMIT;
-    ptr +="<tr><td><span class=\"sensor\">";
-    ptr +=events[array_count].timeStringBuff;
-    ptr +="</span></td><td><span class=\"sensor\">";
-    ptr +=events[array_count].description;
-    ptr +="</td></tr>"; 
-  }  
+if(pCurrPumpState)
+{ptr +="<p>Sump Pump is: ON</p>\n";}
+else
+{ptr +="<p>Sump Pump is: OFF</p>\n";}
+ptr +="<p>Water Level is: " + levels[pCurrLevel] + "</p>\n";
+
+ptr +="<p><table class='center'><tr><th>Date/Time</th><th>Event</th></tr>";
+for(int ii=event_count; ii > max(event_count - EVENT_LIMIT, -1);ii--) {
+array_count = ii % EVENT_LIMIT;
+ptr +="<tr><td><span class=\"sensor\">";
+ptr +=events[array_count].timeStringBuff;
+ptr +="</span></td><td><span class=\"sensor\">";
+ptr +=events[array_count].description;
+ptr +="</td></tr>"; 
+}  
 /* 
-  ptr +="<tr><td>Temperature</td><td><span class=\"sensor\">";
-  ptr +="24";
-  ptr +=" &deg;C</span></td></tr>"; 
-  ptr +="<tr><td>Humidity</td><td><span class=\"sensor\">";
-  ptr +="75";
-  ptr +=" %</span></td></tr>"; 
-  ptr +="<tr><td>Atmos Pressure</td><td><span class=\"sensor\">";
-  ptr +="1.05";
-  ptr +=" mbar</span></td></tr>";
-  ptr +=" </span></td></tr>"; 
-  ptr +="<tr><td>Brightness</td><td><span class=\"sensor\">";
-  ptr +="75";
-  ptr +=" lux</span></td></tr>"; 
-  ptr +="<tr><td>Sensor State?</td><td><span class=\"sensor\">";
-  ptr +="OFF";
-  ptr +=" </span></td></tr>";
-  ptr +="</table></p>\n";
+ ptr +="<tr><td>Temperature</td><td><span class=\"sensor\">";
+ ptr +="24";
+ ptr +=" &deg;C</span></td></tr>"; 
+ ptr +="<tr><td>Humidity</td><td><span class=\"sensor\">";
+ ptr +="75";
+ ptr +=" %</span></td></tr>"; 
+ ptr +="<tr><td>Atmos Pressure</td><td><span class=\"sensor\">";
+ ptr +="1.05";
+ ptr +=" mbar</span></td></tr>";
+ ptr +=" </span></td></tr>"; 
+ ptr +="<tr><td>Brightness</td><td><span class=\"sensor\">";
+ ptr +="75";
+ ptr +=" lux</span></td></tr>"; 
+ ptr +="<tr><td>Sensor State?</td><td><span class=\"sensor\">";
+ ptr +="OFF";
+ ptr +=" </span></td></tr>";
+ ptr +="</table></p>\n";
 */
-  return ptr;
+return ptr;
 }
 
 void showTime(tm localTime) {
-  Serial.print(localTime.tm_mday);
-  Serial.print('/');
-  Serial.print(localTime.tm_mon + 1);
-  Serial.print('/');
-  Serial.print(localTime.tm_year - 100);
-  Serial.print('-');
-  Serial.print(localTime.tm_hour);
-  Serial.print(':');
-  Serial.print(localTime.tm_min);
-  Serial.print(':');
-  Serial.print(localTime.tm_sec);
-  Serial.print(" Day of Week ");
-  if (localTime.tm_wday == 0)   Serial.println(7);
-  else Serial.println(localTime.tm_wday);
+Serial.print(localTime.tm_mday);
+Serial.print('/');
+Serial.print(localTime.tm_mon + 1);
+Serial.print('/');
+Serial.print(localTime.tm_year - 100);
+Serial.print('-');
+Serial.print(localTime.tm_hour);
+Serial.print(':');
+Serial.print(localTime.tm_min);
+Serial.print(':');
+Serial.print(localTime.tm_sec);
+Serial.print(" Day of Week ");
+if (localTime.tm_wday == 0)   Serial.println(7);
+else Serial.println(localTime.tm_wday);
 }
 
 int red_led[4];
@@ -173,168 +170,94 @@ int pumpOnLevel = 250;  //min AnalogRead level is 250 for Pump On
 int pumpOffLevel = 75;  //max AnalogRead level is 75 for Pump Off
 
 unsigned long getNextPumpCheck(unsigned long pStart, unsigned long pNextCheck) {
-	unsigned long interval;
-	unsigned long hourInterval = 60 * 60 * 1000;
-	unsigned long tenMinInterval = 10 * 60 * 1000;
-	unsigned long twoMinInterval = 2 * 60 * 1000;
-	interval = millis() - pStart;
-	if (interval > hourInterval) return pNextCheck + hourInterval;
-	if (interval > tenMinInterval) return pNextCheck + 50 * 60 * 1000;
-	if (interval > twoMinInterval) return pNextCheck + 8 * 60 * 1000;
-	return pStart + 2 * 60 * 1000;
+unsigned long interval;
+unsigned long hourInterval = 60 * 60 * 1000;
+unsigned long tenMinInterval = 10 * 60 * 1000;
+unsigned long twoMinInterval = 2 * 60 * 1000;
+interval = millis() - pStart;
+if (interval > hourInterval) return pNextCheck + hourInterval;
+if (interval > tenMinInterval) return pNextCheck + 50 * 60 * 1000;
+if (interval > twoMinInterval) return pNextCheck + 8 * 60 * 1000;
+return pStart + 2 * 60 * 1000;
 }	
 
 String convertMillis(unsigned long pMillis) {
-  char timeString[20];
-  unsigned long currentMillis = pMillis;
-  int seconds = currentMillis / 1000;
-  int minutes = seconds / 60;
-  int hours = minutes / 60;
+char timeString[20];
+unsigned long currentMillis = pMillis;
+int seconds = currentMillis / 1000;
+int minutes = seconds / 60;
+int hours = minutes / 60;
 //  unsigned long days = hours / 24;
-  currentMillis %= 1000;
-  seconds %= 60;
-  minutes %= 60;
-  hours %= 24; 
-  sprintf_P(timeString, PSTR("%d:%02d:%02d"), hours, minutes, seconds);
-  return timeString;   
+currentMillis %= 1000;
+seconds %= 60;
+minutes %= 60;
+hours %= 24; 
+sprintf_P(timeString, PSTR("%d:%02d:%02d"), hours, minutes, seconds);
+return timeString;   
 }
 
 int getWaterLevel(boolean doPrint) {
-  for(int i = 3;i>-1;i--) {
-    switch_val = digitalRead(switches[i]);
-    if(!switch_val) {
-      if(last_switch_val[i]!=switch_val) {
-        if(doPrint) {
-          Serial.print("Water level is: ");
-          Serial.println(levels[i+1]);
-        }
-        for(int j=i;j>-1;j--) {
-          digitalWrite(green_led[j], LOW);
-          delay(20);
-          digitalWrite(red_led[j], HIGH);
-        }
+  for(int i=0;i<5;i++) {
+    if(i==4) {
+      if(doPrint) {
+        Serial.print("Water level is: ");
+        Serial.print(levels[i]);
       }
-      last_switch_val[i]=switch_val;
-      return i+1;
-    } else {
-      if(last_switch_val[i]!=switch_val) {
-        for(int j=i;j<4;j++) {
-          digitalWrite(red_led[i], LOW);
-          delay(20);
-          digitalWrite(green_led[i], HIGH);
-        }
-      }
+      return i;
     }
-    last_switch_val[i]=switch_val;
-  }
-  if(doPrint) {
-    Serial.print("Water level is: ");
-    Serial.print(levels[0]);
-  }
-  return 0;
-}
+    switch_val = digitalRead(switches[i]);
+    if(switch_val) {
+      if(doPrint) {
+        Serial.print("Water level is: ");
+        Serial.print(levels[i]);
+      }
+      return i;
+    }
 
-void printHistory() {
-  // Safe circular buffer logic
-  int start = event_count;
-  int count = 0;
-  for(int ii = start; ii >= 0 && count < EVENT_LIMIT; ii--) {
-    int idx = ii % EVENT_LIMIT;
-    Serial.println((String) events[idx].timeStringBuff + ": " + events[idx].description);
-    count++;
   }
 }
 
-/*
 void printHistory() {
   for(int ii=event_count; ii > max(event_count - EVENT_LIMIT, -1);ii--) {
     array_count = ii % EVENT_LIMIT;
     Serial.println((String) events[array_count].timeStringBuff + ": " + events[array_count].description);
   }
 }
-*/
 
 void sendEmail(String pHeader, String pMessage);
 
-void updateAndGetTime(boolean doPrint)
-{
-  struct tm timeinfo;
-  // Calls the built-in ESP32 time library function safely
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return;
-  }
-  
-  strftime(timeStringBuff, sizeof(timeStringBuff), "%x %H:%M:%S", &timeinfo);
-  
-  if(doPrint) {
-    Serial.print(timeStringBuff);
-  }
-}
-
 void addEvent(int pEventType) {
   event_count++;
   array_count = event_count % EVENT_LIMIT;
+  //  Serial.print("event_count = ");
+  //  Serial.println(event_count);
+  //  Serial.print("array_count = ");
+  //  Serial.println(array_count);
   events[array_count].event_type = pEventType;
 
-  updateAndGetTime(false);
-  strncpy(events[array_count].timeStringBuff, timeStringBuff, sizeof(events[array_count].timeStringBuff) - 1);
-  events[array_count].timeStringBuff[sizeof(events[array_count].timeStringBuff) - 1] = '\0';
-  events[array_count].post_event_level = curr_level;
-
-  String description = "";
-  if(pEventType) { 
-      events[array_count].pre_event_level = pump_prev_level;
-      description = "Pump ran: " + String((millis() - pumpStartMillis)/1000) + "s (Lvl " + levels[events[array_count].pre_event_level] + " to " + levels[events[array_count].post_event_level] + ")";
-  } else { 
-      events[array_count].pre_event_level = prev_level;
-      description = "Lvl changed: " + levels[events[array_count].post_event_level] + " (from " + levels[events[array_count].pre_event_level] + ")";
-  }
-  
-  strncpy(events[array_count].description, description.c_str(), sizeof(events[array_count].description) - 1);
-  events[array_count].description[sizeof(events[array_count].description) - 1] = '\0';
-  
-  Serial.println(String(events[array_count].timeStringBuff) + ": " + events[array_count].description);
-  sendEmail(pEventType ? "Pump Event" : "Water Level Event", description);
-}
-
-
-/*
-void addEvent(int pEventType) {
-  event_count++;
-  array_count = event_count % EVENT_LIMIT;
-//  Serial.print("event_count = ");
-//  Serial.println(event_count);
-//  Serial.print("array_count = ");
-//  Serial.println(array_count);
-  events[array_count].event_type = pEventType;
-
-
-
-  updateAndGetTime(false);
+  getLocalTime(false);
   for(int ii=0;ii<sizeof(timeStringBuff);ii++) {
-	events[array_count].timeStringBuff[ii] = timeStringBuff[ii];
+    events[array_count].timeStringBuff[ii] = timeStringBuff[ii];
   }
   events[array_count].post_event_level = curr_level;
 
   if(pEventType) {	// Pump event
-      events[array_count].pre_event_level = pump_prev_level;
-      String description = "Sump Pump ran for " + convertMillis(currMillis - pumpStartMillis) + 
-		" (Water Level " + levels[events[array_count].pre_event_level] + 
-		" to " + levels[events[array_count].post_event_level] + ")";
-      description.toCharArray(events[array_count].description, sizeof(events[array_count].description));
-      Serial.println((String) events[array_count].timeStringBuff + ": " + events[array_count].description);
-      sendEmail("Pump Event", description);
+    events[array_count].pre_event_level = pump_prev_level;
+    String description = "Sump Pump ran for " + convertMillis(currMillis - pumpStartMillis) + 
+    " (Water Level " + levels[events[array_count].pre_event_level] + 
+    " to " + levels[events[array_count].post_event_level] + ")";
+    description.toCharArray(events[array_count].description, sizeof(events[array_count].description));
+    Serial.println((String) events[array_count].timeStringBuff + ": " + events[array_count].description);
+    sendEmail("Pump Event", description);
   } else {	// Water level event
-	  events[array_count].pre_event_level = prev_level;
-	  String description = "Water level is: " + levels[events[array_count].post_event_level] + " (from " + levels[events[array_count].pre_event_level] + ")";
-	  description.toCharArray(events[array_count].description, sizeof(events[array_count].description));
-	  Serial.println((String) events[array_count].timeStringBuff + ": " + events[array_count].description);
+    events[array_count].pre_event_level = prev_level;
+    String description = "Water level is: " + levels[events[array_count].post_event_level] + " (from " + levels[events[array_count].pre_event_level] + ")";
+    description.toCharArray(events[array_count].description, sizeof(events[array_count].description));
+    Serial.println((String) events[array_count].timeStringBuff + ": " + events[array_count].description);
     sendEmail("Water Level Event", description);
   }
   server.send(200, "text/html", SendHTML(currPumpState,curr_level)); 
-}
-*/
+} //addEvent
 
 void handle_OnConnect() {
 
@@ -348,11 +271,12 @@ SMTPSession smtp;
 /* Callback function to get the Email sending status */
 void smtpCallback(SMTP_Status status);
 
+// ------------------------------- sendEmail -----------------------------
 void sendEmail(String pHeader, String pMessage){
 
   /* Declare the message class */
   SMTP_Message message;
-#ifdef MAILON
+
   /* Set the message headers */
   message.sender.name = "SumpPump Monitor";
   message.sender.email = AUTHOR_EMAIL;
@@ -386,33 +310,33 @@ void sendEmail(String pHeader, String pMessage){
   /* Start sending Email and close the session */
   if (!MailClient.sendMail(&smtp, &message))
     Serial.println("Error sending Email, " + smtp.errorReason());
-#endif    
-}
+} //sendEmail
 
 /* void initWiFi() {
 #ifdef IP_ADDRESS 
-  Serial.print("Found fixed IP Address: ");
-  Serial.println(ip_address);
-  if (!WiFi.config(ip_address, gateway, subnet, primaryDNS, secondaryDNS)) {
-    Serial.println("STA Failed to configure");
-  }  
-  
+ Serial.print("Found fixed IP Address: ");
+ Serial.println(ip_address);
+ if (!WiFi.config(ip_address, gateway, subnet, primaryDNS, secondaryDNS)) {
+   Serial.println("STA Failed to configure");
+ }  
+ 
 #endif 
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi ..");
-  unsigned long connMillis = millis();ncon
-  while (WiFi.status() != WL_CONNECTED) {
-    if(millis() - connMillis > 120000) {
-      ESP.restart();
-    }
-    Serial.print('.');
-    delay(1000);
-  }
-  Serial.println(WiFi.localIP());
+ WiFi.mode(WIFI_STA);
+ WiFi.begin(ssid, password);
+ Serial.print("Connecting to WiFi ..");
+ unsigned long connMillis = millis();
+ while (WiFi.status() != WL_CONNECTED) {
+   if(millis() - connMillis > 120000) {
+     ESP.restart();
+   }
+   Serial.print('.');
+   delay(1000);
+ }
+ Serial.println(WiFi.localIP());
+}
 } //initWiFi
- */
+*/
 
 void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info){
   Serial.println("Connected to AP successfully!");
@@ -429,9 +353,9 @@ void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
   Serial.print("WiFi lost connection. Reason: ");
   Serial.println(info.disconnected.reason);
   Serial.println("Trying to Reconnect");
-//  WiFi.begin(ssid, password);
-//  initWiFi();  
+  //  WiFi.begin(ssid, password);
 }
+
 
 //  Reconnection Helper Routine
 void maintainWiFi() {
@@ -444,7 +368,7 @@ void maintainWiFi() {
     if (WiFi.status() == WL_CONNECTED) {
       if (!wasConnected) {
         Serial.println("\nWiFi Reconnected Successfully!");
-        updateAndGetTime(true);
+        getLocalTime(true);
         Serial.print(" IP Position: ");
         Serial.println(WiFi.localIP());
         
@@ -467,67 +391,70 @@ void maintainWiFi() {
   }
 }
 
-//------------------------------- setup -------------------------------
+// ------------------------------ setup ------------------------
 void setup() {
-    Serial.begin(115200);
-    pinMode (15, OUTPUT);
-    pinMode (2, OUTPUT);
-    pinMode (0, OUTPUT);
-    pinMode (4, OUTPUT);
-    pinMode (16, OUTPUT);
-    pinMode (17, OUTPUT);
-    pinMode (5, OUTPUT);
-    pinMode (18, OUTPUT);
-    pinMode (HB_led, OUTPUT);
-    pinMode(25, INPUT_PULLDOWN);
-    pinMode(34, INPUT_PULLDOWN);
-    pinMode(39, INPUT_PULLDOWN);
-    pinMode(36, INPUT_PULLDOWN);
-    green_led[0] = 15;
-    red_led[0] = 2;
-    green_led[1] = 0;
-    red_led[1] = 4;
-    green_led[2] = 16;
-    red_led[2] = 17;
-    green_led[3] = 5;
-    red_led[3] = 18;
-    switches[0] = 25;
-    switches[1] = 34;
-    switches[2] = 39;
-    switches[3] = 36;
-    //digitalWrite(red_led[0], HIGH);
-    //delay(2500);
-    //digitalWrite(red_led[0], LOW);
+  Serial.begin(115200);
+  pinMode (15, OUTPUT);
+  pinMode (2, OUTPUT);
+  pinMode (0, OUTPUT);
+  pinMode (4, OUTPUT);
+  pinMode (16, OUTPUT);
+  pinMode (17, OUTPUT);
+  pinMode (5, OUTPUT);
+  pinMode (18, OUTPUT);
+  pinMode (HB_led, OUTPUT);
+  pinMode(25, INPUT_PULLDOWN);
+  pinMode(34, INPUT_PULLDOWN);
+  pinMode(39, INPUT_PULLDOWN);
+  pinMode(36, INPUT_PULLDOWN);
+  green_led[0] = 15;
+  red_led[0] = 2;
+  green_led[1] = 0;
+  red_led[1] = 4;
+  green_led[2] = 16;
+  red_led[2] = 17;
+  green_led[3] = 5;
+  red_led[3] = 18;
+  switches[0] = 25;
+  switches[1] = 34;
+  switches[2] = 39;
+  switches[3] = 36;
+  //digitalWrite(red_led[0], HIGH);
+  //delay(2500);
+  //digitalWrite(red_led[0], LOW);
+      Serial.begin(115200);
 
-//    WiFi.onEvent(WiFiEvent);  
-    // Configure WiFi Profile
-  #ifdef IP_ADDRESS
-    if (!WiFi.config(ip_address, gateway, subnet, primaryDNS, secondaryDNS)) {
-      Serial.println("STA Failed to configure Static IP");
+      // Configure WiFi Profile
+    #ifdef IP_ADDRESS
+      if (!WiFi.config(ip_address, gateway, subnet, primaryDNS, secondaryDNS)) {
+        Serial.println("STA Failed to configure Static IP");
+      }
+    #endif
+
+    WiFi.setAutoReconnect(true); // Tell ESP32 to automatically reconnect
+    WiFi.begin(ssid, password);
+
+    Serial.print("Connecting to Wi-Fi");
+    unsigned long startAttempt = millis();
+    
+    // Limit blocking connection setup to 15 seconds max to prevent boot-loop locking
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 15000) {
+      delay(500);
+      Serial.print(".");
     }
-  #endif
 
-  WiFi.setAutoReconnect(true); // Tell ESP32 to automatically reconnect
-  WiFi.begin(ssid, password);
-  
-  Serial.print("Initializing WiFi Context");
-  unsigned long startAttempt = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 10000) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  if(WiFi.status() == WL_CONNECTED) {
-    Serial.println("\nConnected!");
-    wasConnected = true;
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  } else {
-    Serial.println("\nInitial connection failed. Booting into loop recovery mode.");
-    wasConnected = false;
-  }
+    if(WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nConnected!");
+      wasConnected = true;
+      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    } else {
+      Serial.println("\nInitial connection failed. Booting into loop recovery mode.");
+      wasConnected = false;
+    }
 
   //connect to WiFi
-//  initWiFi();
+  //  initWiFi();
+  //  initWiFi();
   Serial.println(" CONNECTED");
   Serial.print("Got IP: ");  Serial.println(WiFi.localIP());
 
@@ -537,8 +464,8 @@ void setup() {
 
 
   /** Enable the debug via Serial port
-   * none debug or 0
-   * basic debug or 1
+    * none debug or 0
+    * basic debug or 1
   */
   smtp.debug(1);
 
@@ -546,99 +473,95 @@ void setup() {
   smtp.callback(smtpCallback);
 
 
-  // Setup SMTP configuration safely
-  smtp.debug(1);
-  smtp.callback(smtpCallback);
-//  Session_Config config; // Native structure variant for standard mail libraries
+  /* Set the session config */
   session.server.host_name = SMTP_HOST;
   session.server.port = SMTP_PORT;
   session.login.email = AUTHOR_EMAIL;
   session.login.password = AUTHOR_PASSWORD;
-
+  session.login.user_domain = "";
 
   //init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  updateAndGetTime(true);
+  getLocalTime(true);
   Serial.print("\n");
 
   //disconnect WiFi as it's no longer needed
-//  WiFi.disconnect(true);
-//  WiFi.mode(WIFI_OFF);  
+  //  WiFi.disconnect(true);
+  //  WiFi.mode(WIFI_OFF);  
 
-    Serial.println("Sump Pump Monitor");
-    for(int i = 0;i<4;i++) {
-        switch_val = digitalRead(switches[i]);
-//        Serial.print("Switch[");
-//        Serial.print(i);
-//        Serial.print("] is ");
-//        Serial.println(switch_val?"HIGH":"LOW");
-        last_switch_val[i] = -1;
-    }
+  Serial.println("Sump Pump Monitor");
+  for(int i = 0;i<4;i++) {
+  switch_val = digitalRead(switches[i]);
+  //        Serial.print("Switch[");
+  //        Serial.print(i);
+  //        Serial.print("] is ");
+  //        Serial.println(switch_val?"HIGH":"LOW");
+  last_switch_val[i] = switch_val;
 
-/**/
-    for(int i = 0;i<4;i++) {
-        digitalWrite(green_led[i], HIGH);
-        delay(125);
-        digitalWrite(green_led[i], LOW);
-        delay(125);
+  }
 
-    }
-    for(int i = 0;i<4;i++) {
-        digitalWrite(red_led[i], HIGH);
-        delay(125);
-        digitalWrite(red_led[i], LOW);
-        delay(125);
+  /**/
+  for(int i = 0;i<4;i++) {
+  digitalWrite(green_led[i], HIGH);
+  delay(125);
+  digitalWrite(green_led[i], LOW);
+  delay(125);
 
-    }
+  }
+  for(int i = 0;i<4;i++) {
+  digitalWrite(red_led[i], HIGH);
+  delay(125);
+  digitalWrite(red_led[i], LOW);
+  delay(125);
 
-    for(int i = 0;i<4;i++) {
-        digitalWrite(HB_led, HIGH);
-        delay(125);
-        digitalWrite(HB_led, LOW);
-        delay(125);
+  }
 
-    }
+  for(int i = 0;i<4;i++) {
+  digitalWrite(HB_led, HIGH);
+  delay(125);
+  digitalWrite(HB_led, LOW);
+  delay(125);
 
-    for(int i = 0;i<4;i++) {
-        digitalWrite(red_led[i], LOW);
-        digitalWrite(green_led[i], HIGH);
-    }
+  }
+
+  for(int i = 0;i<4;i++) {
+  digitalWrite(red_led[i], LOW);
+  digitalWrite(green_led[i], LOW);
+  }
+  digitalWrite(HB_led, LOW);
+
+  curMonVal = analogRead(curMonPin);
+  currPumpState = (curMonVal > pumpOnLevel?1:0);
+
+  #ifdef DEBUG	
+    Serial.print("Sump Pump is ");
+    Serial.print(currPumpState?"ON":"OFF");
+    Serial.print(" (" + curMonVal);
+    Serial.println(")");
+  #endif	
+  prevPumpState = currPumpState;
+  if(currPumpState) {
+    digitalWrite(HB_led, HIGH);
+    pumpStartMillis = millis();
+    nextPumpCheck = getNextPumpCheck(pumpStartMillis, pumpStartMillis);
+  } else {
     digitalWrite(HB_led, LOW);
+  }
 
-    curMonVal = analogRead(curMonPin);
-    currPumpState = (curMonVal > pumpOnLevel?1:0);
-
-#ifdef DEBUG	
-	Serial.print("Sump Pump is ");
-	Serial.print(currPumpState?"ON":"OFF");
-    	Serial.print(" (" + curMonVal);
-	Serial.println(")");
-#endif	
-	prevPumpState = currPumpState;
-	if(currPumpState) {
-		digitalWrite(HB_led, HIGH);
-		pumpStartMillis = millis();
-		nextPumpCheck = getNextPumpCheck(pumpStartMillis, pumpStartMillis);
-	} else {
-		digitalWrite(HB_led, LOW);
-	}
-
-  updateAndGetTime(false);
-  curr_level = getWaterLevel(true);
-  prev_level = -1;
-//  events[0].event_type = 0;
-  addEvent(0); // Safely sets up index 0 with clean configuration constraints
-
+  getLocalTime(false);
+  curr_level = getWaterLevel(false);
+  prev_level = curr_level;
+  events[0].event_type = 0;
   for(int ii=0;ii<sizeof(timeStringBuff);ii++) {
-    events[0].timeStringBuff[ii] = timeStringBuff[ii];
+  events[0].timeStringBuff[ii] = timeStringBuff[ii];
   }
   String description = "Initial Water level is: " + levels[curr_level] + " | Sump Pump is: " + (currPumpState?"ON":"OFF") ;
   description.toCharArray(events[0].description, sizeof(events[0].description));
   events[0].pre_event_level = prev_level;
   events[0].post_event_level = curr_level;
-#ifdef DEBUG	
+  #ifdef DEBUG	
   Serial.println((String) events[0].timeStringBuff + ": " + events[0].description);
-#endif	
+  #endif	
   printStartMillis = millis();
   nextPrintMillis = printStartMillis + 3 * 60 * 1000;
 
@@ -649,9 +572,9 @@ void setup() {
 
   server.begin();
   Serial.println("HTTP server started"); 
-}
+} //setup
 
-//--------------------------------- loop ------------------------------------
+// ---------------------------- loop ------------------------------
 void loop() {
   // Always run network health checks first
   maintainWiFi();
@@ -662,28 +585,47 @@ void loop() {
   }
 
   // ... Rest of your existing pump monitor and timing logic ...
-  curr_level = getWaterLevel(true);
-  if(prev_level!=curr_level) {
-            updateAndGetTime(false);
-            if(!currPumpState) {
-			        addEvent(0);
-            }
-            prev_level = curr_level;
+
+  for(int i = 0;i<4;i++) {
+    int myswitch_val = digitalRead(switches[i]);
+    if(!myswitch_val) {
+      digitalWrite(green_led[i], LOW);
+      delay(20);
+      digitalWrite(red_led[i], HIGH);
+    } else {
+      for(int j=i;j<4;j++) {
+        digitalWrite(red_led[j], LOW);
+        delay(20);
+        digitalWrite(green_led[j], HIGH);
+      }
+    }
+    if(myswitch_val!=last_switch_val[i]) {
+      getLocalTime(false);
+      prev_level = curr_level;
+      curr_level = getWaterLevel(false);
+      if(!currPumpState) {
+        addEvent(0);
+      }
+    }
+    last_switch_val[i] = myswitch_val;
+    if(myswitch_val) {
+      break;
+    }
   }
   curMonVal = analogRead(curMonPin);
- if(curMonVal > pumpOnLevel) currPumpState = 1;
- if(curMonVal < pumpOffLevel) currPumpState = 0;
-// currPumpState = (curMonVal > pumpOnLevel?1:0);
- if(currPumpState != prevPumpState) {
-     prevPumpState = currPumpState;
-     updateAndGetTime(true);
-#ifdef DEBUG		 
-    Serial.print(": Sump Pump is ");
-    Serial.print(currPumpState?"ON":"OFF");
-    Serial.print(" (");
-    Serial.print(curMonVal);
-    Serial.println(")");
-#endif	
+  if(curMonVal > pumpOnLevel) currPumpState = 1;
+  if(curMonVal < pumpOffLevel) currPumpState = 0;
+  // currPumpState = (curMonVal > pumpOnLevel?1:0);
+  if(currPumpState != prevPumpState) {
+    prevPumpState = currPumpState;
+    getLocalTime(true);
+    #ifdef DEBUG		 
+      Serial.print(": Sump Pump is ");
+      Serial.print(currPumpState?"ON":"OFF");
+      Serial.print(" (");
+      Serial.print(curMonVal);
+      Serial.println(")");
+    #endif	
     if(currPumpState) {
       pump_prev_level = curr_level;
       digitalWrite(HB_led, HIGH);
@@ -691,39 +633,39 @@ void loop() {
       nextPumpCheck = getNextPumpCheck(pumpStartMillis, pumpStartMillis);
     } else {
       digitalWrite(HB_led, LOW);
-//      curr_level = getWaterLevel(true);
+      curr_level = getWaterLevel(false);
       currMillis = millis();
       if(currMillis - pumpStartMillis > 2000) {
-	      addEvent(1);
+        addEvent(1);
       }      
     }
- } else {
-	currMillis = millis();
-	if(currPumpState && currMillis > nextPumpCheck) { 
-      updateAndGetTime(true);
+  } else {
+    currMillis = millis();
+    if(currPumpState && currMillis > nextPumpCheck) { 
+      getLocalTime(true);
       String pumpMsg = ": *** WARNING *** Sump Pump has been running for " + convertMillis(currMillis - pumpStartMillis) + " minutes.";
-//      String description = "Sump Pump ran for " + convertMillis(currMillis - pumpStartMillis) + 
-//		" (Water Level " + levels[events[array_count].pre_event_level] + 
-//		" to " + levels[events[array_count].post_event_level] + ")";
+      //      String description = "Sump Pump ran for " + convertMillis(currMillis - pumpStartMillis) + 
+      //		" (Water Level " + levels[events[array_count].pre_event_level] + 
+      //		" to " + levels[events[array_count].post_event_level] + ")";
 
       sendEmail("*** Pump Warning ***",pumpMsg);
-#ifdef DEBUG		 
+      #ifdef DEBUG		 
       Serial.print(": *** WARNING *** Sump Pump has been running for ");
       Serial.print((currMillis - pumpStartMillis) / (60 * 1000));
       Serial.println(" minutes.");
-#endif	
-	nextPumpCheck = getNextPumpCheck(pumpStartMillis, nextPumpCheck);
+      #endif	
+      nextPumpCheck = getNextPumpCheck(pumpStartMillis, nextPumpCheck);
+    }
+    if(currMillis >  nextPrintMillis) {
+      #ifdef DEBUG
+      getLocalTime(true);		 
+      //    Serial.println(": Printing History...");
+      //    printHistory();
+      #endif	
+      nextPrintMillis = currMillis + 3 * 60 * 1000;
+    }
+//    server.handleClient();
   }
-  if(currMillis >  nextPrintMillis) {
-#ifdef DEBUG
-    updateAndGetTime(true);		 
-//    Serial.println(": Printing History...");
-//    printHistory();
-#endif	
-    nextPrintMillis = currMillis + 3 * 60 * 1000;
-  }
- }
- server.handleClient();
 }
 
 /* Callback function to get the Email sending status */
